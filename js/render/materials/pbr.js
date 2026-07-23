@@ -134,6 +134,9 @@ uniform vec3 LIGHT_COLOR;
 
 const vec3 dielectricSpec = vec3(0.04);
 const vec3 black = vec3(0.0);
+// Flat ambient/fill light so surfaces facing away from the main light
+// source are never fully dark.
+const vec3 AMBIENT_LIGHT = vec3(0.35);
 
 ${EPIC_PBR_FUNCTIONS}
 
@@ -194,7 +197,7 @@ vec4 fragment_main() {
   float halfLambert = dot(n, l) * 0.5 + 0.5;
   halfLambert *= halfLambert;
 
-  vec3 color = (halfLambert * LIGHT_COLOR * lambertDiffuse(cDiff)) + specular;
+  vec3 color = (halfLambert * LIGHT_COLOR * lambertDiffuse(cDiff)) + specular + (cDiff * AMBIENT_LIGHT);
 
 #ifdef USE_OCCLUSION
   float occlusion = texture(occlusionTex, vTex).r;
