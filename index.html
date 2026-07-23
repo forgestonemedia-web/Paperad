@@ -47,6 +47,46 @@ Modified to load a custom 3D model.
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
+
+      /* ==== Branded start screen ==== */
+      #brand-screen {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 500;
+        background: #D0021B;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.5s ease;
+      }
+      #brand-screen.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #brand-logo {
+        width: 55vw;
+        max-width: 260px;
+        margin-bottom: 40px;
+      }
+      #ar-button-container button.webvr-ui-button {
+        background-color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        min-width: 220px !important;
+        height: 56px !important;
+      }
+      #ar-button-container .webvr-ui-title {
+        color: #D0021B !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.03em;
+      }
+      #ar-button-container .webvr-ui-svg path {
+        fill: #D0021B !important;
+      }
+      #ar-button-container button.webvr-ui-button[disabled=true] {
+        background-color: rgba(255,255,255,0.5) !important;
+      }
     </style>
   </head>
   <body>
@@ -54,14 +94,11 @@ Modified to load a custom 3D model.
       <div id="loading-spinner"></div>
       <div id="loading-text">Loading experience…</div>
     </div>
-    <header>
-      <details open>
-        <summary>AR Model Placement</summary>
-        <p>
-          Tap the button, point your camera at a flat surface, and tap the screen to place the model.
-        </p>
-      </details>
-    </header>
+    <div id="brand-screen">
+      <img id="brand-logo" src="media/logo.png" alt="Logo">
+      <div id="ar-button-container"></div>
+    </div>
+    <header style="display:none;"></header>
     <script type="module">
       import {WebXRButton} from './js/util/webxr-button.js';
       import {Scene} from './js/render/scenes/scene.js';
@@ -114,7 +151,7 @@ Modified to load a custom 3D model.
           textXRNotFoundTitle: "AR NOT FOUND",
           textExitXRTitle: "EXIT AR",
         });
-        document.querySelector('header').appendChild(xrButton.domElement);
+        document.getElementById('ar-button-container').appendChild(xrButton.domElement);
 
         if (navigator.xr) {
           navigator.xr.isSessionSupported('immersive-ar')
@@ -135,6 +172,8 @@ Modified to load a custom 3D model.
       function onSessionStarted(session) {
         session.addEventListener('end', onSessionEnded);
         session.addEventListener('select', onSelect);
+
+        document.getElementById('brand-screen').classList.add('hidden');
 
         if (!gl) {
           gl = createWebGLContext({
@@ -174,6 +213,9 @@ Modified to load a custom 3D model.
 
       function onSessionEnded(event) {
         xrButton.setSession(null);
+        hasPlaced = false;
+        arObject.visible = false;
+        document.getElementById('brand-screen').classList.remove('hidden');
       }
 
       function placeARObjectAt(matrix) {
