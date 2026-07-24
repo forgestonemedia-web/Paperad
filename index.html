@@ -23,20 +23,57 @@
         width: 60vw;
         max-width: 260px;
       }
+      #manual-links {
+        margin-top: 24px;
+        font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, sans-serif;
+        font-size: 0.85rem;
+        color: #666;
+        text-align: center;
+      }
+      #manual-links a {
+        color: #D0021B;
+        font-weight: 600;
+        text-decoration: none;
+      }
     </style>
   </head>
   <body>
     <div id="brand-screen">
       <img id="brand-logo" src="media/logo.png" alt="Logo">
+      <!-- Manual fallback links, shown only if auto-redirect doesn't fire immediately -->
+      <div id="manual-links">
+        Not redirected automatically?<br>
+        <a href="android.html">Android version</a> &nbsp;|&nbsp; <a href="ios.html">iPhone version</a>
+      </div>
     </div>
     <script>
+      function goAndroid() { window.location.replace('android.html'); }
+      function goIOS() { window.location.replace('ios.html'); }
+
       var ua = navigator.userAgent || '';
-      var isIOS = /iPad|iPhone|iPod/.test(ua) ||
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      if (isIOS) {
-        window.location.replace('ios.html');
+      var isAndroidUA = /Android/i.test(ua);
+      var isAppleUA = /iPad|iPhone|iPod/.test(ua) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      if (isAndroidUA) {
+        // Clearly an Android device's browser identifies itself as such.
+        goAndroid();
+      } else if (isAppleUA) {
+        // Clearly an iPhone/iPad, including "Request Desktop Site" spoofing
+        // on iPad, which reports as a Mac but keeps multi-touch support.
+        goIOS();
+      } else if (navigator.xr && navigator.xr.isSessionSupported) {
+        // Ambiguous/unrecognized user agent (e.g. an in-app browser or a
+        // browser that hides its identity). Fall back to feature detection:
+        // test for the actual capability the Android experience needs.
+        navigator.xr.isSessionSupported('immersive-ar').then(function (supported) {
+          if (supported) { goAndroid(); } else { goIOS(); }
+        }).catch(function () { goIOS(); });
       } else {
-        window.location.replace('android.html');
+        // No WebXR API at all and an unrecognized user agent — safest
+        // default is the iOS/Quick Look fallback since it requires no
+        // special browser API support.
+        goIOS();
       }
     </script>
   </body>
