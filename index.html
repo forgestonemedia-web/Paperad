@@ -1,271 +1,43 @@
 <!doctype html>
-<!--
-Based on the WebXR Hit Test sample from immersive-web/webxr-samples
-Copyright 2018 The Immersive Web Community Group (MIT License)
-Modified to load a custom 3D model.
--->
 <html>
   <head>
-    <meta charset='utf-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>
-    <meta name='mobile-web-app-capable' content='yes'>
-    <meta name='apple-mobile-web-app-capable' content='yes'>
-    <link rel='icon' type='image/png' sizes='32x32' href='favicon-32x32.png'>
-    <link rel='icon' type='image/png' sizes='96x96' href='favicon-96x96.png'>
-    <link rel='stylesheet' href='css/common.css'>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <title>AR Model Placement</title>
     <style>
-      #loading-screen {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 999;
-        background: rgba(211, 211, 211, 0.8);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        transition: opacity 0.6s ease;
+      html, body {
+        margin: 0; padding: 0;
+        height: 100%;
+        background: #D3D3D3;
       }
-      #loading-screen.fade-out {
-        opacity: 0;
-        pointer-events: none;
-      }
-      #loading-spinner {
-        width: 48px;
-        height: 48px;
-        border: 4px solid rgba(60, 60, 60, 0.25);
-        border-top-color: #3c3c3c;
-        border-radius: 50%;
-        animation: spin 0.9s linear infinite;
-      }
-      #loading-text {
-        margin-top: 18px;
-        color: #3c3c3c;
-        font: 600 1rem/1.4 -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, sans-serif;
-        letter-spacing: 0.02em;
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-
-      /* ==== Branded start screen ==== */
       #brand-screen {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 500;
         background: #D3D3D3;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        transition: opacity 0.5s ease;
-      }
-      #brand-screen.hidden {
-        opacity: 0;
-        pointer-events: none;
       }
       #brand-logo {
-        width: 80vw;
-        max-width: 380px;
-        margin-bottom: 30px;
-      }
-      #ar-button-container button.webvr-ui-button {
-        background-color: #ffffff !important;
-        border: none !important;
-        border-radius: 8px !important;
-        min-width: 220px !important;
-        height: 56px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-      }
-      #ar-button-container .webvr-ui-title {
-        color: #D0021B !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.03em;
-      }
-      #ar-button-container .webvr-ui-svg path {
-        fill: #D0021B !important;
-      }
-      #ar-button-container button.webvr-ui-button[disabled=true] {
-        background-color: rgba(255,255,255,0.5) !important;
+        width: 60vw;
+        max-width: 260px;
       }
     </style>
   </head>
   <body>
-    <div id="loading-screen">
-      <div id="loading-spinner"></div>
-      <div id="loading-text">Loading experience…</div>
-    </div>
     <div id="brand-screen">
       <img id="brand-logo" src="media/logo.png" alt="Logo">
-      <div id="ar-button-container"></div>
     </div>
-    <header style="display:none;"></header>
-    <script type="module">
-      import {WebXRButton} from './js/util/webxr-button.js';
-      import {Scene} from './js/render/scenes/scene.js';
-      import {Renderer, createWebGLContext} from './js/render/core/renderer.js';
-      import {Node} from './js/render/core/node.js';
-      import {Gltf2Node} from './js/render/nodes/gltf2.js';
-      import {DropShadowNode} from './js/render/nodes/drop-shadow.js';
-      import {vec3} from './js/render/math/gl-matrix.js';
-      import {Ray} from './js/render/math/ray.js';
-
-      // XR globals.
-      let xrButton = null;
-      let xrRefSpace = null;
-      let xrViewerSpace = null;
-      let xrHitTestSource = null;
-
-      // WebGL scene globals.
-      let gl = null;
-      let renderer = null;
-      let scene = new Scene();
-      scene.enableStats(false);
-
-      let arObject = new Node();
-      arObject.visible = false;
-      scene.addNode(arObject);
-
-      // ==== Your model is loaded here ====
-      let model = new Gltf2Node({url: 'media/gltf/mymodel/model.glb'});
-      arObject.addNode(model);
-
-      let reticle = new Gltf2Node({url: 'media/gltf/reticle/reticle.gltf'});
-      reticle.visible = false;
-      scene.addNode(reticle);
-
-      // Simple drop shadow underneath the object to help ground it.
-      let shadow = new DropShadowNode();
-      vec3.set(shadow.scale, 0.15, 0.15, 0.15);
-      arObject.addNode(shadow);
-
-      let hasPlaced = false;
-
-      // Ensure the background is transparent for AR.
-      scene.clear = false;
-
-      function initXR() {
-        xrButton = new WebXRButton({
-          onRequestSession: onRequestSession,
-          onEndSession: onEndSession,
-          textEnterXRTitle: "START AR",
-          textXRNotFoundTitle: "AR NOT FOUND",
-          textExitXRTitle: "EXIT AR",
-        });
-        document.getElementById('ar-button-container').appendChild(xrButton.domElement);
-
-        if (navigator.xr) {
-          navigator.xr.isSessionSupported('immersive-ar')
-                      .then((supported) => {
-            xrButton.enabled = supported;
-          });
-        }
+    <script>
+      var ua = navigator.userAgent || '';
+      var isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        window.location.replace('ios.html');
+      } else {
+        window.location.replace('android.html');
       }
-
-      function onRequestSession() {
-        return navigator.xr.requestSession('immersive-ar', {requiredFeatures: ['local', 'hit-test']})
-                           .then((session) => {
-          xrButton.setSession(session);
-          onSessionStarted(session);
-        });
-      }
-
-      function onSessionStarted(session) {
-        session.addEventListener('end', onSessionEnded);
-        session.addEventListener('select', onSelect);
-
-        document.getElementById('brand-screen').classList.add('hidden');
-
-        if (!gl) {
-          gl = createWebGLContext({
-            xrCompatible: true
-          });
-          renderer = new Renderer(gl);
-          scene.setRenderer(renderer);
-
-          // Brighten the scene lighting so the model doesn't render dark.
-          // Combined with the ambient fill light added in pbr.js, this gives
-          // even, natural-looking illumination without blowing out highlights.
-          renderer.globalLightColor = vec3.fromValues(4.0, 4.0, 4.0);
-          // Light coming from slightly above/front instead of straight down
-          // gives more even, natural-looking illumination on the model.
-          renderer.globalLightDir = vec3.fromValues(-0.3, -1.0, -0.5);
-        }
-
-        session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
-
-        session.requestReferenceSpace('viewer').then((refSpace) => {
-          xrViewerSpace = refSpace;
-          session.requestHitTestSource({ space: xrViewerSpace }).then((hitTestSource) => {
-            xrHitTestSource = hitTestSource;
-          });
-        });
-
-        session.requestReferenceSpace('local').then((refSpace) => {
-          xrRefSpace = refSpace;
-          session.requestAnimationFrame(onXRFrame);
-        });
-      }
-
-      function onEndSession(session) {
-        xrHitTestSource.cancel();
-        xrHitTestSource = null;
-        session.end();
-      }
-
-      function onSessionEnded(event) {
-        xrButton.setSession(null);
-        hasPlaced = false;
-        arObject.visible = false;
-        document.getElementById('brand-screen').classList.remove('hidden');
-      }
-
-      function placeARObjectAt(matrix) {
-        arObject.visible = true;
-        arObject.matrix = matrix;
-        hasPlaced = true;
-        reticle.visible = false;
-      }
-
-      let rayOrigin = vec3.create();
-      let rayDirection = vec3.create();
-
-      function onSelect(event) {
-        // Once placed, ignore further taps so the model can't be duplicated.
-        if (hasPlaced) return;
-        if (reticle.visible) {
-          placeARObjectAt(reticle.matrix);
-        }
-      }
-
-      function onXRFrame(t, frame) {
-        let session = frame.session;
-        let pose = frame.getViewerPose(xrRefSpace);
-        reticle.visible = false;
-
-        if (xrHitTestSource && pose && !hasPlaced) {
-          let hitTestResults = frame.getHitTestResults(xrHitTestSource);
-          if (hitTestResults.length > 0) {
-            let hitPose = hitTestResults[0].getPose(xrRefSpace);
-            reticle.visible = true;
-            reticle.matrix = hitPose.transform.matrix;
-          }
-        }
-
-        scene.startFrame();
-        session.requestAnimationFrame(onXRFrame);
-        scene.drawXRFrame(frame, pose);
-        scene.endFrame();
-      }
-
-      initXR();
-
-      // Show the loading overlay for the first 5 seconds, then fade it out.
-      setTimeout(() => {
-        const loadingScreen = document.getElementById('loading-screen');
-        loadingScreen.classList.add('fade-out');
-        setTimeout(() => loadingScreen.remove(), 600);
-      }, 5000);
     </script>
   </body>
 </html>
