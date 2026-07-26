@@ -136,7 +136,7 @@ const vec3 dielectricSpec = vec3(0.04);
 const vec3 black = vec3(0.0);
 // Flat ambient/fill light so surfaces facing away from the main light
 // source are never fully dark.
-const vec3 AMBIENT_LIGHT = vec3(0.65);
+const vec3 AMBIENT_LIGHT = vec3(1.0);
 
 ${EPIC_PBR_FUNCTIONS}
 

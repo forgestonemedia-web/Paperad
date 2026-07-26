@@ -183,10 +183,9 @@ Modified to load a custom 3D model.
           renderer = new Renderer(gl);
           scene.setRenderer(renderer);
 
-          // Brighten the scene lighting so the model doesn't render dark.
-          // Combined with the ambient fill light added in pbr.js, this gives
-          // even, natural-looking illumination without blowing out highlights.
-          renderer.globalLightColor = vec3.fromValues(6.5, 6.5, 6.5);
+          // Ambient light now handles overall scene brightness evenly;
+          // this directional light just adds subtle shading definition.
+          renderer.globalLightColor = vec3.fromValues(3.0, 3.0, 3.0);
           // Light coming from slightly above/front instead of straight down
           // gives more even, natural-looking illumination on the model.
           renderer.globalLightDir = vec3.fromValues(-0.3, -1.0, -0.5);
